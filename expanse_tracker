@@ -1,0 +1,110 @@
+"""Expense Tracker
+Python program to record daily expenses by category and show monthly totals.
+Data is saved in expenses.csv (columns: date, category, amount, note).
+"""
+
+import csv
+import os
+from collections import defaultdict
+from datetime import datetime
+
+FILE_NAME = "expenses.csv"
+FIELDS = ["date", "category", "amount", "note"]
+
+
+def ensure_file():
+    if not os.path.exists(FILE_NAME):
+        with open(FILE_NAME, "w", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerow(FIELDS)
+
+
+def load_expenses():
+    ensure_file()
+    with open(FILE_NAME, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def read_date(prompt):
+    while True:
+        text = input(prompt).strip()
+        if not text:
+            return datetime.now().strftime("%Y-%m-%d")
+        try:
+            return datetime.strptime(text, "%Y-%m-%d").strftime("%Y-%m-%d")
+        except ValueError:
+            print("Invalid date. Use YYYY-MM-DD (or press Enter for today).")
+
+
+def read_amount(prompt):
+    while True:
+        try:
+            amount = float(input(prompt))
+            if amount <= 0:
+                raise ValueError
+            return amount
+        except ValueError:
+            print("Invalid amount. Enter a positive number.")
+
+
+def add_expense():
+    date = read_date("Date (YYYY-MM-DD, Enter for today): ")
+    category = input("Category (food, transport, books...): ").strip().lower() or "other"
+    amount = read_amount("Amount: ")
+    note = input("Note (optional): ").strip()
+    ensure_file()
+    with open(FILE_NAME, "a", newline="", encoding="utf-8") as f:
+        csv.writer(f).writerow([date, category, f"{amount:.2f}", note])
+    print("Expense saved.")
+
+
+def view_expenses():
+    expenses = load_expenses()
+    if not expenses:
+        print("No expenses recorded yet.")
+        return
+    print(f"\n{'Date':<12}{'Category':<15}{'Amount':>10}  Note")
+    print("-" * 50)
+    for e in expenses:
+        print(f"{e['date']:<12}{e['category']:<15}{float(e['amount']):>10.2f}  {e['note']}")
+
+
+def monthly_summary():
+    month = input("Month (YYYY-MM, Enter for this month): ").strip()
+    if not month:
+        month = datetime.now().strftime("%Y-%m")
+    totals = defaultdict(float)
+    for e in load_expenses():
+        if e["date"].startswith(month):
+            totals[e["category"]] += float(e["amount"])
+    if not totals:
+        print(f"No expenses found for {month}.")
+        return
+    print(f"\nSummary for {month}")
+    print("-" * 30)
+    for category, total in sorted(totals.items(), key=lambda x: -x[1]):
+        print(f"{category:<18}{total:>10.2f}")
+    print("-" * 30)
+    print(f"{'TOTAL':<18}{sum(totals.values()):>10.2f}")
+
+
+def main():
+    actions = {"1": add_expense, "2": view_expenses, "3": monthly_summary}
+    while True:
+        print("\n===== Expense Tracker =====")
+        print("1. Add expense")
+        print("2. View all expenses")
+        print("3. Monthly summary")
+        print("0. Exit")
+        choice = input("Choose an option: ").strip()
+        if choice == "0":
+            print("Goodbye!")
+            break
+        action = actions.get(choice)
+        if action:
+            action()
+        else:
+            print("Invalid option. Try again.")
+
+
+if __name__ == "__main__":
+    main()
